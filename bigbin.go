@@ -49,7 +49,45 @@ package bigbin
 import (
 	"fmt"
 	"os"
+	"path"
+	"strings"
+	"unicode"
 )
+
+const AppMainTmpl = `package %s_main
+
+import "github.com/josvazg/bigbin"
+
+func init() {
+	bigbin.Add("%s",%sMain)
+}
+
+func %sMain() {
+	// paste your main here
+}
+`
+
+const BigBinMainTmpl = `package main
+
+import (
+    // add your AppMain packages here like
+    // _ "full/package/path"
+    "github.com/josvazg/bigbin"
+)
+
+func main() {
+    bigbin.Main()
+}
+`
+
+const StandAloneMainTmpl = `package main 
+
+import "%s"
+
+func main()	{
+	%s_main.%sMain()
+}
+`
 
 // app Main function type
 type MainFunc func()
@@ -70,4 +108,33 @@ func Main() {
 	} else {
 		fmt.Fprintf(os.Stderr, "%s app not added into this bigbin!\n", appName)
 	}
+}
+
+// GenerateAppMain dumps the code for the AppMain template for the given appPackage
+func GenerateAppMain(appPackage string) string {
+	appName := appName(appPackage)
+	return fmt.Sprintf(AppMainTmpl, strings.ToLower(appName), appName, appName, appName)
+}
+
+// GenerateBigBin dumps the code for the Big Binary main template
+func GenerateBigBin() string {
+	return BigBinMainTmpl
+}
+
+// GenerateStandAloneMain dumps the code for a StandAlone Main code reusing the AppMain code
+func GenerateStandAloneMain(appPackage string) string {
+	appName := appName(appPackage)
+	return fmt.Sprintf(StandAloneMainTmpl, appPackage, strings.ToLower(appName), appName)
+}
+
+// appName extracts the app name from the appPackage path and capitalizes it
+func appName(appPackage string) string {
+	return capitalize(path.Base(appPackage))
+}
+
+// capitalize returns the string s with the first unicode character in capitals
+func capitalize(s string) string {
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }

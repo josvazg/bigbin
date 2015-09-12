@@ -11,6 +11,47 @@ import (
 var testData = []string{"a", "b", "app1", "app2"}
 
 const (
+	someAppPackage  = "some.org/packaged/app"
+	expectedAppName = "app"
+)
+
+const ExpectedAppMain = `package app_main
+
+import "github.com/josvazg/bigbin"
+
+func init() {
+	bigbin.Add("App",AppMain)
+}
+
+func AppMain() {
+	// paste your main here
+}
+`
+
+const ExpectedStandAloneMain = `package main 
+
+import "some.org/packaged/app"
+
+func main()	{
+	app_main.AppMain()
+}
+`
+
+var expectedGenerated = [...]string{ExpectedAppMain, BigBinMainTmpl, ExpectedStandAloneMain}
+
+type generatorFunc func() string
+
+var genFuncs = []generatorFunc{
+	func() string {
+		return GenerateAppMain(someAppPackage)
+	},
+	GenerateBigBin,
+	func() string {
+		return GenerateStandAloneMain(someAppPackage)
+	},
+}
+
+const (
 	BIGBIN_APPNAME = "BIGBIN_APPNAME"
 )
 
@@ -65,4 +106,14 @@ func Run(appName string) ([]byte, error) {
 	cmd := exec.Command(os.Args[0])
 	cmd.Env = append(os.Environ(), BIGBIN_APPNAME+"="+appName)
 	return cmd.CombinedOutput()
+}
+
+// TestGenerate invokes bigbin.Generate and validates in outputs the expected code
+func TestGenerate(t *testing.T) {
+	for i := 0; i < len(genFuncs); i++ {
+		generatedMain := genFuncs[i]()
+		if generatedMain != expectedGenerated[i] {
+			t.Fatalf("Expected generated main was:\n%s\nBut got:\n%s", expectedGenerated[i], generatedMain)
+		}
+	}
 }
