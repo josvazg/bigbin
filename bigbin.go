@@ -84,8 +84,8 @@ const StandAloneMainTmpl = `package main
 
 import "%s"
 
-func main()	{
-	%s_main.%sMain()
+func main() {
+    %s_main.%sMain()
 }
 `
 

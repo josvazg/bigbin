@@ -11,8 +11,8 @@
 package main
 
 import (
-	"bigbin"
 	"fmt"
+	"github.com/josvazg/bigbin"
 	"os"
 )
 
@@ -45,8 +45,7 @@ func main() {
 // ensureAppPackageArgs checks only 2 arguments exists and returns the second, or fails the process
 func ensureAppPackageArgs() string {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "Usage:\n%s full/path/to/app",
-			os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage:\n%s full/path/to/app\n", os.Args[0])
 		os.Exit(-1)
 	}
 	return os.Args[1]
