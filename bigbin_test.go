@@ -32,8 +32,8 @@ const ExpectedStandAloneMain = `package main
 
 import "some.org/packaged/app"
 
-func main()	{
-	app_main.AppMain()
+func main() {
+    app_main.AppMain()
 }
 `
 
