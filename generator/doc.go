@@ -30,7 +30,7 @@ Source code changes automated by this Generate(bigBinDir, mainDirs...) are, for 
 		bigbin.Add("{appname}", Main)
 	}
 
-4) A standalone main will be generated at {directory}/main wich code such as:
+4) A standalone main will be generated at {directory=appname}/{appname} wich code such as:
 
 	package main
 

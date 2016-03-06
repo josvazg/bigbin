@@ -115,7 +115,11 @@ func Restore(bigBinDir string, mainDirs ...string) *Sources {
 func (srcs *Sources) String() string {
 	buf := bytes.NewBufferString("")
 	for filename, src := range srcs.srcs {
-		fmt.Fprintf(buf, "%s:%s%s%s\n\n", filename, SourcesSeparator, string(src), SourcesSeparator)
+		if src != nil {
+			fmt.Fprintf(buf, "%s:%s%s%s\n\n", filename, SourcesSeparator, string(src), SourcesSeparator)
+		} else {
+			fmt.Fprintf(buf, "%s: to be removed\n\n", filename)
+		}
 	}
 	return buf.String()
 }
@@ -154,7 +158,7 @@ func (srcs *Sources) Apply() error {
 	for filename, src := range srcs.srcs {
 		if src != nil {
 			dir := filepath.Dir(filename)
-			if err := os.MkdirAll(dir, 755); err != nil {
+			if err := os.MkdirAll(dir, 0755); err != nil {
 				return err
 			}
 			file, err := os.Create(filename)
@@ -162,6 +166,7 @@ func (srcs *Sources) Apply() error {
 				return err
 			}
 			defer file.Close()
+			fmt.Println("Write into", filename, "src:\n", string(src))
 			if _, err := io.WriteString(file, string(src)); err != nil {
 				return err
 			}
@@ -290,6 +295,7 @@ func (srcs *Sources) addAutoregistration(dir string) {
 
 // removeAutoregistration marks an autoregistration init for deletion in the given directory package
 func (srcs *Sources) removeAutoregistration(dir string) {
+	packageName := packageName(dir)
 	autoregisterFilename := fmt.Sprintf("%s_autoregister.go", packageName)
 	srcs.srcs[filepath.Join(dir, autoregisterFilename)] = nil
 }
@@ -302,7 +308,7 @@ func (srcs *Sources) addStandAlone(dir string) {
 		srcs.fail("Couldn't get package path for %s: %v", dir, err)
 		return
 	}
-	mainFilename := filepath.Join(dir, "main", "main.go")
+	mainFilename := filepath.Join(dir, packageName, "main.go")
 	if src, err := compose(StandAlone, packagePath, packagePath, packageName); err != nil {
 		srcs.fail("Couldn't process & gofmt source: %v", err)
 		return
@@ -313,7 +319,8 @@ func (srcs *Sources) addStandAlone(dir string) {
 
 // removeStandAlone marks for deletion a stand alone main invocation in subpackage at dir
 func (srcs *Sources) removeStandAlone(dir string) {
-	mainFilename := filepath.Join(dir, "main", "main.go")
+	packageName := packageName(dir)
+	mainFilename := filepath.Join(dir, packageName, "main.go")
 	srcs.srcs[mainFilename] = nil
 }
 

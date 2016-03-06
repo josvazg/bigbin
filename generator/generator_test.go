@@ -17,7 +17,7 @@ const (
 	SampleDir                    = "src/somewhere.com/someones/sample/"
 	SampleFilename               = SampleDir + "sample.go"
 	ExpectedAutoRegisterFilename = SampleDir + "sample_autoregister.go"
-	ExpectedStandAloneFilename   = SampleDir + "main/main.go"
+	ExpectedStandAloneFilename   = SampleDir + "sample/main.go"
 	ExpectedBigBinFilename       = BigBinDir + "main.go"
 
 	OriginalSample = `// Sample code
