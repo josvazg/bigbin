@@ -166,7 +166,6 @@ func (srcs *Sources) Apply() error {
 				return err
 			}
 			defer file.Close()
-			fmt.Println("Write into", filename, "src:\n", string(src))
 			if _, err := io.WriteString(file, string(src)); err != nil {
 				return err
 			}
@@ -237,7 +236,7 @@ func (srcs *Sources) addFixedMains(dir string) {
 				srcs.fail("Couldn't gofmt astfile: %v", err)
 				return
 			} else {
-				srcs.srcs[filepath.Join(dir, filename)] = src
+				srcs.srcs[filename] = src
 			}
 		}
 		if !mainFound {
@@ -271,7 +270,7 @@ func (srcs *Sources) addRestoredMains(dir string) {
 				srcs.fail("Couldn't gofmt astfile: %v", err)
 				return
 			} else {
-				srcs.srcs[filepath.Join(dir, filename)] = src
+				srcs.srcs[filename] = src
 			}
 		}
 		if !mainFound {

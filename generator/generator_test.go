@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -168,7 +167,7 @@ func fakeParseDir(fileset *token.FileSet, dir string) (map[string]*ast.Package, 
 			return nil, fmt.Errorf("Can't parse in memory test file: %v", err)
 		}
 		files := make(map[string]*ast.File)
-		files[filepath.Base(SampleFilename)] = src
+		files[SampleFilename] = src
 		pkg, err := ast.NewPackage(fileset, files, fakeImporter(), ast.NewScope(nil))
 		if err != nil {
 			return nil, fmt.Errorf("Can't create in memory test package: %v", err)
