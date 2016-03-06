@@ -52,6 +52,8 @@ func main() {
 	AutoregisterSuffix = "_autoregister.go"
 
 	SourcesSeparator = "\n=================================================\n"
+
+	RemovedFile = ""
 )
 
 // Sources bundles all sources to be modified (or the errors found) by this generator package.

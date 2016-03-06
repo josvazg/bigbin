@@ -82,38 +82,68 @@ func main() {
 `
 )
 
+var sample string = OriginalSample
+
 // TestGenerate validates that Generate creates proper sources
 func TestGenerate(t *testing.T) {
-	// setup
-	parseDir = fakeParseDir
-	absPath = fakeAbsPath
-	gopath := os.Getenv("GOPATH")
-	os.Setenv("GOPATH", "")
-	// exercise
-	sources := Generate(BigBinDir, SampleDir)
-	// validate
-	if sources.Errors() != nil {
-		t.Fatalf("Generate failed:\n%v", sources.SingleError())
+	gopath := setup()
+	for _, code := range []string{OriginalSample, ExpectedGeneratedSample} {
+		// set the test in memory code & generate against it
+		sample = code
+		sources := Generate(BigBinDir, SampleDir)
+		if sources.Errors() != nil {
+			t.Fatalf("Generate failed:\n%v", sources.SingleError())
+		}
+		validate(t, sources, ExpectedGeneratedSample, ExpectedAutoRegister, ExpectedStandAlone, ExpectedBigBin)
 	}
-	filenames := sources.Filenames()
-	expectedSources := 4
-	if len(filenames) != expectedSources {
-		t.Fatalf("Expected %d generated sources but got %d: %v", expectedSources, len(filenames), filenames)
+	shutdown(gopath)
+}
+
+// TestRestore validates that Restore creates proper sources
+func TestRestore(t *testing.T) {
+	gopath := setup()
+	for _, code := range []string{OriginalSample, ExpectedGeneratedSample} {
+		// set the test in memory code & restore against it
+		sample = code
+		sources := Restore(BigBinDir, SampleDir)
+		if sources.Errors() != nil {
+			t.Fatalf("Restore failed:\n%v", sources.SingleError())
+		}
+		validate(t, sources, OriginalSample, RemovedFile, RemovedFile, RemovedFile)
 	}
-	validate(t, sources, SampleFilename, ExpectedGeneratedSample)
-	validate(t, sources, ExpectedAutoRegisterFilename, ExpectedAutoRegister)
-	validate(t, sources, ExpectedStandAloneFilename, ExpectedStandAlone)
-	validate(t, sources, ExpectedBigBinFilename, ExpectedBigBin)
-	// restore
-	os.Setenv("GOPATH", gopath)
+	shutdown(gopath)
 }
 
 //
 // Helper functions and mocking infrastructure
 //
 
-// validate fails the test if actual contents are not as expected
-func validate(t *testing.T, sources *Sources, filename, rawExpected string) {
+func setup() string {
+	parseDir = fakeParseDir
+	absPath = fakeAbsPath
+	gopath := os.Getenv("GOPATH")
+	os.Setenv("GOPATH", "")
+	return gopath
+}
+
+func validate(t *testing.T, sources *Sources, sample, autoRegister, standAlone, bigbin string) {
+	filenames := sources.Filenames()
+	expectedSources := 4
+	if len(filenames) != expectedSources {
+		t.Fatalf("Expected %d generated sources but got %d: %v", expectedSources, len(filenames), filenames)
+	}
+	assertSource(t, sources, SampleFilename, sample)
+	assertSource(t, sources, ExpectedAutoRegisterFilename, autoRegister)
+	assertSource(t, sources, ExpectedStandAloneFilename, standAlone)
+	assertSource(t, sources, ExpectedBigBinFilename, bigbin)
+}
+
+func shutdown(gopath string) {
+	os.Setenv("GOPATH", gopath)
+}
+
+// assertSource fails the test if actual filename contents in sources are not as expected
+func assertSource(t *testing.T, sources *Sources, filename, rawExpected string) {
 	actual := sources.Source(filename)
 	expectedBytes, err := format.Source(([]byte)(rawExpected))
 	if err != nil {
@@ -133,7 +163,7 @@ func validate(t *testing.T, sources *Sources, filename, rawExpected string) {
 func fakeParseDir(fileset *token.FileSet, dir string) (map[string]*ast.Package, error) {
 	if dir == SampleDir {
 		packages := make(map[string]*ast.Package)
-		src, err := parser.ParseFile(fileset, SampleFilename, OriginalSample, parser.ParseComments|parser.AllErrors)
+		src, err := parser.ParseFile(fileset, SampleFilename, sample, parser.ParseComments|parser.AllErrors)
 		if err != nil {
 			return nil, fmt.Errorf("Can't parse in memory test file: %v", err)
 		}
