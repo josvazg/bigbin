@@ -21,7 +21,7 @@ func main() {
 	flag.StringVar(&bigBinDir, "to", "", "Directory in where to generate the big binary main "+
 		"(by default is empty and does not create a big binary main)")
 	flag.BoolVar(&apply, "apply", false, "Apply changes to the filesystem (false by default)")
-	flag.BoolVar(&apply, "restore", false, "Restore files to before the big binary changes intead (false by default)")
+	flag.BoolVar(&restore, "restore", false, "Restore files to before the big binary changes intead (false by default)")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage:")
 		fmt.Fprintln(os.Stderr, os.Args[0], "[flags]", "mainDir1 [mainDir2...]")
@@ -42,7 +42,7 @@ func main() {
 		sources = generator.Restore(bigBinDir, mainDirs...)
 	}
 	dieOnError(sources.SingleError())
-	// if code genration was successful, apply or print
+	// if code generation was successful, apply or print
 	if apply {
 		dieOnError(sources.Apply())
 	} else {
