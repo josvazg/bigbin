@@ -25,6 +25,16 @@ func init() {
 	bigbin.Add("%s", Main)
 }`
 
+	StandAlone = Header + `Standalone main for %s
+package main 
+
+import "%s"
+
+func main() {
+    %s.Main()
+}
+`
+
 	BigBin = Header + `bigbin main"
 
 package main
@@ -36,16 +46,6 @@ import (
 
 func main() {
     bigbin.Main()
-}
-`
-
-	StandAlone = Header + `Standalone main for %s
-package main 
-
-import "%s"
-
-func main() {
-    %s.Main()
 }
 `
 
@@ -116,9 +116,28 @@ func (srcs *Sources) String() string {
 	return buf.String()
 }
 
-// Errors returns the errors registered within Sources, if any
+// Errors returns the errors registered within Sources, or returns nil if there where no errors
 func (srcs *Sources) Errors() []error {
 	return srcs.errors
+}
+
+// SingleError joins all Sources errors into a single one, or returns nil if there where no errors
+func (srcs *Sources) SingleError() error {
+	if srcs.errors == nil {
+		return nil
+	}
+	if len(srcs.errors) == 1 {
+		return srcs.errors[0]
+	}
+	buf := bytes.NewBufferString("")
+	for i, err := range srcs.errors {
+		if i != 0 {
+			fmt.Fprintf(buf, "\n%v", err)
+		} else {
+			fmt.Fprintf(buf, "%v", err)
+		}
+	}
+	return fmt.Errorf(buf.String())
 }
 
 // Apply sources changes on the filesystem.
@@ -151,6 +170,30 @@ func (srcs *Sources) Apply() error {
 	return nil
 }
 
+// Source returns the source code string for the givne filename
+func (srcs *Sources) Source(filename string) string {
+	return string(srcs.srcs[filename])
+}
+
+// Filenames enumerate all sources files generated
+func (srcs *Sources) Filenames() []string {
+	filenames := make([]string, 0, len(srcs.srcs))
+	for filename, _ := range srcs.srcs {
+		filenames = append(filenames, filename)
+	}
+	return filenames
+}
+
+type parseDirFunc func(fileset *token.FileSet, dir string) (map[string]*ast.Package, error)
+
+// parseDir substitution allows unit tests to test Generate & Restore without touching the filesystem
+var parseDir parseDirFunc = defaultParseDir
+
+type absPathFunc func(dir string) (string, error)
+
+// absPath substitution allows unit tests to test Generate & Restore without touching the filesystem
+var absPath absPathFunc = defaultAbsPath
+
 // newSources generates a new sources type for processing and generating code
 func newSources() *Sources {
 	return &Sources{srcs: make(map[string][]byte)}
@@ -166,7 +209,7 @@ func newSources() *Sources {
 // some package was missing any func Main or func mains or the generated code failed validation.
 func (srcs *Sources) addFixedMains(dir string) {
 	fileset := token.NewFileSet()
-	packages, err := parser.ParseDir(fileset, dir, nil, parser.ParseComments|parser.AllErrors)
+	packages, err := parseDir(fileset, dir)
 	if err != nil {
 		srcs.fail("Couldn't parse directory %s:%v", dir, err)
 		return
@@ -200,7 +243,7 @@ func (srcs *Sources) addFixedMains(dir string) {
 // "package {pkgname}" -> "package main" & "func Main()" -> "func main()"
 func (srcs *Sources) addRestoredMains(dir string) {
 	fileset := token.NewFileSet()
-	packages, err := parser.ParseDir(fileset, dir, nil, parser.ParseComments|parser.AllErrors)
+	packages, err := parseDir(fileset, dir)
 	if err != nil {
 		srcs.fail("Couldn't parse directory %s:%v", dir, err)
 		return
@@ -326,15 +369,15 @@ func toImports(dirs []string) ([]interface{}, error) {
 
 // pkgpath extract the package path of the given directory
 func pkgpath(dir string) (pkgpath string, err error) {
-	pkgpath, err = filepath.Abs(dir)
+	pkgpath, err = absPath(dir)
 	if err != nil {
 		return "", err
 	}
 	prefix := filepath.Join(os.Getenv("GOPATH"), "src")
 	if !strings.HasPrefix(pkgpath, prefix) {
-		return "", fmt.Errorf("%d was expected within GOPATH source dir '%s' but it is not!", pkgpath, prefix)
+		return "", fmt.Errorf("%s was expected within GOPATH source dir '%s' but it is not!", pkgpath, prefix)
 	}
-	return pkgpath[len(prefix)+1:], nil
+	return filepath.Clean(pkgpath[len(prefix)+1:]), nil
 }
 
 // renameFunc modifies astfile with 'func {oldname}' (if present) renamed to 'func {newname}'.
@@ -362,4 +405,14 @@ func gofmt(fileset *token.FileSet, file *ast.File) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// defaultParseDir parses filesystem directories
+func defaultParseDir(fileset *token.FileSet, dir string) (map[string]*ast.Package, error) {
+	return parser.ParseDir(fileset, dir, nil, parser.ParseComments|parser.AllErrors)
+}
+
+// defaultAbsPath returns the filesystem absolute path for dir
+func defaultAbsPath(dir string) (string, error) {
+	return filepath.Abs(dir)
 }
