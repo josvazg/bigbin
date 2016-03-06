@@ -6,6 +6,7 @@ package bigbin
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // app Main function type
@@ -19,12 +20,35 @@ func AddApp(appName string, appMain MainFunc) {
 	apps[appName] = appMain
 }
 
+func dieOnError(err error) {
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(-1)
+	}
+}
+
 // Main runs the app named as the command line first argument
 func Main() {
-	appName := os.Args[0]
-	if appMain, ok := apps[os.Args[0]]; ok {
+	cmd := os.Args[0]
+	processFilename, err := filepath.EvalSymlinks(cmd)
+	dieOnError(err)
+	rootName := filepath.Base(processFilename)
+	appName := filepath.Base(cmd)
+	// Invoke the appName, if registered
+	if appMain, ok := apps[appName]; ok {
 		appMain()
-	} else {
+	} else if appName == rootName { // Otherwise, if it is the root process filename, rebuild the symslinks
+		fmt.Println("Rebuilding symlinks in current directory:")
+		for app, _ := range apps {
+			fmt.Printf(" %s -> %s\n", processFilename, app)
+			os.Symlink(processFilename, app)
+		}
+	} else { // if all above fails, then output an error with some help and exit
 		fmt.Fprintf(os.Stderr, "%s app not added into this bigbin!\n", appName)
+		fmt.Fprintf(os.Stderr, "Registered apps are:\n")
+		for app, _ := range apps {
+			fmt.Fprintf(os.Stderr, " %s\n", app)
+		}
+		os.Exit(2)
 	}
 }
