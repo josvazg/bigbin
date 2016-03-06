@@ -24,7 +24,7 @@ package %s
 import "github.com/josvazg/bigbin"
 
 func init() {
-	bigbin.Add("%s", Main)
+	bigbin.AddApp("%s", Main)
 }`
 
 	StandAlone = Header + `Standalone main for %s
